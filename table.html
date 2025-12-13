@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="lo">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ຈັດການຂໍ້ມູນບັດ - ລະບົບຈອດລົດ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+
+    <header class="header-table shadow-sm">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h3 class="mb-0"><i class="bi bi-clipboard-data me-2"></i> ຈັດການຂໍ້ມູນບັດຈອດລົດ</h3>
+            <div>
+                <a href="index.html" class="btn btn-info me-2"><i class="bi bi-arrow-left me-2"></i> ກັບໄປໜ້າອອກບັດ</a>
+                <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#scanModal"><i
+                        class="bi bi-qr-code-scan me-2"></i> ເປີດໜ້າສະແກນຢືນຢັນ</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid mt-4">
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-primary"><i class="bi bi-funnel-fill me-2"></i> ເຄື່ອງມືຄົ້ນຫາ ແລະ ກອງຂໍ້ມູນ
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="generalSearch"
+                            placeholder="ຄົ້ນຫາ ID ບັດ, ທະບຽນ, ຊື່ລູກຄ້າ...">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" class="form-control" id="staffSearch" placeholder="ຊື່ຜູ້ອອກບັດ">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="startDate" placeholder="ວັນທີເລີ່ມຕົ້ນ">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="endDate" placeholder="ວັນທີສິ້ນສຸດ">
+                    </div>
+                    <div class="col-12 text-end">
+                        <button class="btn btn-primary me-2" id="searchBtn"><i class="bi bi-search me-2"></i>
+                            ຄົ້ນຫາ</button>
+                        <button class="btn btn-outline-secondary" id="resetFilterBtn">ລ້າງຄ່າ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover shadow-sm">
+                <thead class="bg-dark text-white">
+                    <tr>
+                        <th>ID ບັດ</th>
+                        <th>ປະເພດ</th>
+                        <th>ທະບຽນລົດ</th>
+                        <th>ເວລາເຂົ້າ</th>
+                        <th>ຜູ້ຮັບຜິດຊອບ</th>
+                        <th>ຄ່າຈອດ</th>
+                        <th>ສະຖານະ</th>
+                        <th class="text-center">ຈັດການ</th>
+                    </tr>
+                </thead>
+                <tbody id="dataRecords">
+                    <tr>
+                        <td colspan="8" class="text-center p-4 text-muted">ກຳລັງໂຫຼດຂໍ້ມູນ...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="scanModalLabel"><i class="bi bi-camera me-2"></i> ໜ້າສະແກນຢືນຢັນບັດ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="reader">
+                        <p class="text-center mt-5 text-muted">ກຳລັງເປີດກ້ອງ... ກະລຸນາອະນຸຍາດການເຂົ້າເຖິງກ້ອງ</p>
+                    </div>
+                    <div class="alert mt-3" role="alert" id="scanResult">
+                        ສະແກນ QR Code ຂອງບັດຈອດລົດ
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ປິດ</button>
+                    <button type="button" class="btn btn-success" id="confirmScanBtn"
+                        style="display: none;">ຢືນຢັນການອອກລົດ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="editModalLabel"><i class="bi bi-pencil-square me-2"></i> ແກ້ໄຂຂໍ້ມູນບັດ
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editDocId">
+                    <div class="mb-3">
+                        <label for="editTicketId" class="form-label">ID ບັດ:</label>
+                        <input type="text" class="form-control" id="editTicketId" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCustomerName" class="form-label">ຊື່ຄົນຝາກ:</label>
+                        <input type="text" class="form-control" id="editCustomerName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editLicensePlate" class="form-label">ທະບຽນລົດ:</label>
+                        <input type="text" class="form-control" id="editLicensePlate">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editParkingFee" class="form-label">ຄ່າຈອດລົດ:</label>
+                        <input type="number" class="form-control" id="editParkingFee">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIssueByStaff" class="form-label">ຜູ້ຮັບຜິດຊອບ (ອອກບັດ):</label>
+                        <input type="text" class="form-control" id="editIssueByStaff">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ຍົກເລີກ</button>
+                    <button type="button" class="btn btn-warning" id="saveEditBtn">ບັນທຶກການແກ້ໄຂ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <script src="table-app.js"></script>
+</body>
+
+</html>

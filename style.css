@@ -1,0 +1,51 @@
+/* style.css - ໃຊ້ຮ່ວມກັນສຳລັບທັງສອງໜ້າ */
+
+body {
+    background-color: #f8f9fa;
+    /* ສີພື້ນຫຼັງອ່ອນ */
+}
+
+/* ສ່ວນຫົວຂອງໜ້າອອກບັດ */
+.header-index {
+    background-color: #007bff;
+    /* Primary Blue */
+    color: white;
+    padding: 15px 0;
+    margin-bottom: 20px;
+}
+
+/* ສ່ວນຫົວຂອງໜ້າຈັດການຂໍ້ມູນ */
+.header-table {
+    background-color: #343a40;
+    /* Dark Grey */
+    color: white;
+    padding: 15px 0;
+    margin-bottom: 20px;
+}
+
+/* Style ສໍາລັບກ່ອງຄຳເຕືອນ (Disclaimer) */
+.card-disclaimer {
+    border-left: 5px solid #ffc107;
+    /* ເສັ້ນສີເຫຼືອງຂ້າງ */
+}
+
+.disclaimer-title {
+    color: #ffc107;
+    /* ສີເຫຼືອງສຳລັບຫົວຂໍ້ */
+}
+
+/* ປັບແຕ່ງຕາຕະລາງ */
+.table th,
+.table td {
+    vertical-align: middle;
+}
+
+/* ປັບແຕ່ງ QR Code Scanner */
+#reader {
+    width: 100%;
+    max-width: 400px;
+    margin: 15px auto;
+    border: 2px dashed #007bff;
+    padding: 10px;
+    border-radius: 8px;
+}
