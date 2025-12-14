@@ -15,20 +15,23 @@
 
 <body>
 
-    <header class="header-index shadow-sm">
+    <header class="header-index bg-primary text-white shadow-sm">
         <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center py-2">
                 <h3 class="mb-0"><i class="bi bi-ticket-detailed-fill me-2"></i> ລະບົບຈັດການບັດຈອດລົດ</h3>
-                <a href="table.html" class="btn btn-warning btn-sm fw-bold"><i class="bi bi-table me-2"></i>
-                    ໄປໜ້າຈັດການຂໍ້ມູນ</a>
+
+                <button type="button" class="btn btn-warning btn-sm fw-bold" data-bs-toggle="modal"
+                    data-bs-target="#adminGateModal">
+                    <i class="bi bi-table me-2"></i> ໄປໜ້າຈັດການຂໍ້ມູນ
+                </button>
+
             </div>
         </div>
     </header>
 
     <div class="container-fluid">
         <div class="row justify-content-center">
-
-            <div class="col-md-6 mb-4">
+            <div class="col-md-6 mb-4 screen-only">
                 <div class="card shadow-lg border-0">
                     <div class="card-header bg-primary text-white">
                         <h4 class="mb-0">ອອກບັດຈອດລົດໃໝ່</h4>
@@ -85,22 +88,21 @@
                 </div>
             </div>
 
-            <div class="col-md-5">
-
+            <div class="col-md-5 screen-only">
                 <div class="card shadow-lg mb-4 card-disclaimer">
                     <div class="card-body">
                         <h4 class="disclaimer-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>
                             ຄຳເຕືອນ</h4>
                         <ul class="list-group list-group-flush mt-3">
                             <li class="list-group-item border-0 pb-1">
-                                <i class="bi bi-check-circle-fill text-success me-2"></i> ກະລຸນາກວດແຊັດຂອງທີ່
-                                ມີຄ່ານຳຕິດໂຕໄປດ້ວຍ.
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                ກະລຸນາກວດແຊັດຂອງທີ່ມີຄ່ານຳຕິດໂຕໄປດ້ວຍ.
                             </li>
                             <li class="list-group-item border-0 pb-1 text-danger">
-                                <i class="bi bi-file-earmark-lock-fill me-2"></i> ກະລຸນາເກັບປີ້ລົດຢ່າໃຫ້ເສຍ,
-                                ຖ້າເສຍຈະປັບໄຫມ **200,000 ກີບ** ພ້ອມເອົາເອກະສານມາຢືນຢັນ.
+                                <i class="bi bi-file-earmark-lock-fill me-2"></i>
+                                ກະລຸນາເກັບປີ້ລົດຢ່າໃຫ້ເສຍ, ຖ້າເສຍຈະປັບໄຫມ **200,000 ກີບ** ພ້ອມເອົາເອກະສານມາຢືນຢັນ.
                             </li>
-                            <li class="list-group-item border-0 pb-1" id="motoWarning">
+                            <li class="list-group-item border-0 pb-1" id="motoWarningDisplay">
                                 <i class="bi bi-lock-fill me-2"></i> ກະລຸນາຢ່າລ໊ອກຄໍລົດຈັກ (ສຳລັບລົດຈັກ).
                             </li>
                         </ul>
@@ -112,32 +114,56 @@
                         <h4 class="mb-0">ຜົນການອອກບັດສຳເລັດ</h4>
                     </div>
                     <div class="card-body text-center">
-                        <p class="lead text-primary fw-bold">ID ບັດ: <span id="displayTicketId"></span></p>
-                        <div class="mb-3">
-                            <div id="qrcodeDisplay" class="d-inline-block p-2 border"></div>
+
+                        <div id="printReceipt" class="p-3"
+                            style="display: block; opacity: 0; position: absolute; left: -9999px;">
+                            <h5 class="mb-2 text-dark fw-bold">** ໃບຮັບບັດຈອດລົດ **</h5>
+                            <hr class="my-1">
+                            <p class="mb-1 text-primary fw-bold fs-5">ID ບັດ: <span id="displayTicketId"></span></p>
+
+                            <div class="mb-2">
+                                <div id="qrcodeDisplay" class="d-inline-block p-1 border"></div>
+                            </div>
+
+                            <div class="receipt-details text-start mx-auto w-75">
+                                <p class="mb-0"><strong>ປະເພດລົດ:</strong> <span id="displayVehicleType"></span></p>
+                                <p class="mb-0"><strong>ທະບຽນ:</strong> <span id="displayLicensePlate"></span></p>
+                                <p class="mb-0"><strong>ລູກຄ້າ:</strong> <span id="displayCustomerName"></span></p>
+                                <p class="mb-0"><strong>ວັນທີເຂົ້າ:</strong> <span id="displayDepositDate"></span></p>
+                                <p class="mb-0"><strong>ເວລາ:</strong> <span id="displayEntryTime"></span></p>
+                                <p class="mb-0"><strong>ຜູ້ອອກບັດ:</strong> <span id="displayStaffName"></span></p>
+                                <hr class="my-1">
+                                <p class="mb-0 fw-bold fs-5 text-danger">ຄ່າຈອດ: <span id="displayFee"></span> ກີບ</p>
+                                <hr class="my-1">
+                            </div>
+
+                            <div class="receipt-warning text-start mx-auto w-75 mt-2">
+                                <p class="mb-1 fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    ຄຳເຕືອນ</p>
+                                <ul class="list-unstyled small ps-2">
+                                    <li><i class="bi bi-check-circle-fill text-success me-1"></i>
+                                        ກວດແຊັດຂອງທີ່ມີຄ່ານຳຕິດໂຕໄປດ້ວຍ.</li>
+                                    <li class="text-danger">
+                                        <i class="bi bi-file-earmark-lock-fill me-1"></i>
+                                        ເກັບປີ້ຢ່າໃຫ້ເສຍ, ຖ້າເສຍຈະປັບໄຫມ **200,000 ກີບ** ພ້ອມເອກະສານ.
+                                    </li>
+                                    <li id="motoWarningReceipt">
+                                        <i class="bi bi-lock-fill me-1"></i> ຢ່າລ໊ອກຄໍລົດຈັກ (ສຳລັບລົດຈັກ).
+                                    </li>
+                                </ul>
+                                <hr class="my-1">
+                                <p class="mb-0 small text-muted">** ກະລຸນາສະແກນ QR Code ເພື່ອອອກລົດ **</p>
+                            </div>
+
                         </div>
-
-                        <ul class="list-group list-group-flush text-start">
-                            <li class="list-group-item"><strong>ປະເພດລົດ:</strong> <span id="displayVehicleType"></span>
-                            </li>
-                            <li class="list-group-item"><strong>ວັນທີຝາກ:</strong> <span id="displayDepositDate"></span>
-                            </li>
-                            <li class="list-group-item"><strong>ເວລາເຂົ້າ:</strong> <span id="displayEntryTime"></span>
-                            </li>
-                            <li class="list-group-item"><strong>ຜູ້ອອກບັດ:</strong> <span id="displayStaffName"></span>
-                            </li>
-                            <li class="list-group-item"><strong>ຄ່າຈອດ:</strong> <span id="displayFee"></span> ກີບ</li>
-                        </ul>
-
-                        <div class="mt-4">
-                            <button class="btn btn-outline-primary" onclick="window.print()"><i
-                                    class="bi bi-printer-fill me-2"></i> ພິມ</button>
+                        <div class="mt-3 screen-only">
+                            <button class="btn btn-primary" onclick="showPrintModal()"><i
+                                    class="bi bi-printer-fill me-2"></i> ພິມໃບຮັບບັດ</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 
     <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
@@ -151,9 +177,55 @@
         </div>
     </div>
 
+    <div class="modal fade" id="receiptPrintModal" tabindex="-1" aria-labelledby="receiptPrintModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="receiptPrintModalLabel">ໜ້າກວດສອບກ່ອນພິມ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-2">
+                    <p class="text-muted small">ກົດປຸ່ມ 'ພິມ' ເພື່ອສົ່ງໄປທີ່ເຄື່ອງພິມ</p>
+                    <div id="printContentContainer" style="width: 100%; max-width: 300px; margin: 0 auto;">
+                        <p>ກຳລັງສ້າງໃບຮັບເງິນ...</p>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-center">
+                    <button type="button" class="btn btn-primary" id="confirmPrintBtn"><i
+                            class="bi bi-printer-fill me-2"></i> ພິມ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="adminGateModal" tabindex="-1" aria-labelledby="adminGateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="adminGateModalLabel"><i class="bi bi-lock-fill me-2"></i>
+                        ປ້ອນລະຫັດຫົວໜ້າ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger small">ຕ້ອງມີລະຫັດຫົວໜ້າເພື່ອເຂົ້າເບິ່ງໜ້າຈັດການຂໍ້ມູນ.</p>
+                    <input type="password" class="form-control" id="adminGatePassword" placeholder="ປ້ອນລະຫັດຫົວໜ້າ">
+                    <div class="mt-2 text-danger small" id="adminGateErrorMsg" style="display: none;">
+                        ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ຍົກເລີກ</button>
+                    <button type="button" class="btn btn-danger" id="confirmAdminGateBtn">ເຂົ້າສູ່ລະບົບ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <script src="app.js"></script>
 </body>
