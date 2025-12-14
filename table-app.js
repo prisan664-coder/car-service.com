@@ -1,9 +1,10 @@
 // =======================================================
 // table-app.js - Logic for Data Management (table.html)
-// ✅ ສະບັບທີ່ຖືກແກ້ໄຂ: ໃຊ້ Firebase Global Variables (Compat Mode)
+// ✅ ສະບັບສຸດທ້າຍ: ລວມຊ່ອງຄົ້ນຫາ & ເພີ່ມຟັງຊັນລວມເງິນຕາມຜົນຄົ້ນຫາ
 // =======================================================
 
-// 🔴 ບໍ່ມີການໃຊ້ import ອີກຕໍ່ໄປ
+// ⚠️ ລະຫັດຜູ້ເບິ່ງແຍງລະບົບ (Admin Password)
+const ADMIN_PASSWORD = "Zxc12345_";
 
 // 2. Firebase Configuration (🚨 ກະລຸນາແທນທີ່ດ້ວຍ Config ຂອງທ່ານເອງ!)
 const firebaseConfig = {
@@ -17,203 +18,340 @@ const firebaseConfig = {
     measurementId: "G-Q2PMCHLTX3"
 };
 
-// 🟢 Initialization ໂດຍໃຊ້ Global Variable 'firebase'
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const TICKETS_COLLECTION_NAME = "parking_tickets";
 const dataRecordsBody = document.getElementById('dataRecords');
+const scanModal = document.getElementById('scanModal');
 let html5QrCode;
+let scannedTicketId = null;
 
 // Helper: ແປງ Firebase Timestamp
 function formatTimestamp(timestamp) {
     if (!timestamp || !timestamp.toDate) return 'N/A';
     const date = timestamp.toDate();
-    return date.toLocaleString('lo-LA', { dateStyle: 'short', timeStyle: 'short' });
+    return date.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+        date.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
 }
 
-// 2. ໂຫຼດ ແລະ ສະແດງຂໍ້ມູນຕາຕະລາງ
-// 🟢 ໃຊ້ db.collection() ແລະ .orderBy()
-async function loadTickets(q = db.collection(TICKETS_COLLECTION_NAME).orderBy('entryTime', 'desc')) {
-    dataRecordsBody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-primary"><div class="spinner-border spinner-border-sm me-2" role="status"></div> ກຳລັງໂຫຼດຂໍ້ມູນ...</td></tr>';
+// Helper: ສະແດງຜົນລວມເປັນສະກຸນເງິນ
+function formatCurrency(amount) {
+    const numericAmount = parseFloat(amount) || 0;
+    return numericAmount.toLocaleString('lo-LA', { maximumFractionDigits: 0 }) + ' ກີບ';
+}
+
+// ----------------------------------------------------
+// 🌟 ຟັງຊັນ: ຄິດໄລ່ຍອດຂາຍລວມທັງໝົດ ແລະ ຂອງມື້ນີ້ 🌟
+// ----------------------------------------------------
+async function calculateSales() {
+    const totalSalesDisplay = document.getElementById('totalSalesDisplay');
+    const todaySalesDisplay = document.getElementById('todaySalesDisplay');
+
+    totalSalesDisplay.textContent = 'ກຳລັງໂຫຼດ...';
+    todaySalesDisplay.textContent = 'ກຳລັງໂຫຼດ...';
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
     try {
-        const querySnapshot = await q.get();
-        if (querySnapshot.empty) {
-            dataRecordsBody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-muted">ບໍ່ພົບຂໍ້ມູນບັດໃດໆ.</td></tr>';
+        const allUsedTicketsSnapshot = await db.collection(TICKETS_COLLECTION_NAME)
+            .where('isUsed', '==', true)
+            .get();
+
+        let totalSales = 0;
+        let todaySales = 0;
+
+        allUsedTicketsSnapshot.forEach(doc => {
+            const data = doc.data();
+            const fee = parseFloat(data.parkingFee) || 0;
+            totalSales += fee;
+
+            if (data.scanTime && data.scanTime.toDate) {
+                const scanDate = data.scanTime.toDate();
+                if (scanDate >= startOfToday) {
+                    todaySales += fee;
+                }
+            }
+        });
+
+        totalSalesDisplay.textContent = formatCurrency(totalSales);
+        todaySalesDisplay.textContent = formatCurrency(todaySales);
+
+    } catch (error) {
+        console.error("Error calculating sales:", error);
+        totalSalesDisplay.textContent = 'Error';
+        todaySalesDisplay.textContent = 'Error';
+    }
+}
+// ----------------------------------------------------
+
+// ----------------------------------------------------
+// 🌟 ຟັງຊັນ: ລວມຍອດເງິນຕາມຜົນການຄົ້ນຫາ 🌟
+// ----------------------------------------------------
+function updateFilteredSalesTotal(generalSearchTerm, startDate, endDate) {
+    let total = 0;
+    let count = 0;
+    const rows = dataRecordsBody.querySelectorAll('tr');
+
+    rows.forEach(row => {
+        if (row.style.display !== 'none' && !row.querySelector('[colspan]')) { // ຮັບປະກັນວ່າບໍ່ແມ່ນແຖວຂໍ້ຄວາມແຈ້ງເຕືອນ
+            const feeText = row.cells[5]?.textContent || '0';
+            const cleanedFee = feeText.replace(' ກີບ', '').replace(/,/g, '');
+            const fee = parseFloat(cleanedFee) || 0;
+            total += fee;
+            count++;
+        }
+    });
+
+    const filterMsgElement = document.getElementById('filterCriteriaMsg');
+    let message = `ສະແດງຍອດລວມຂອງ ${count} ລາຍການ`;
+
+    if (generalSearchTerm || startDate || endDate) {
+        message += ' ຕາມເງື່ອນໄຂ: ';
+        let conditions = [];
+        if (generalSearchTerm) conditions.push(`ຄຳຄົ້ນຫາ: "${generalSearchTerm}"`);
+        if (startDate && endDate) conditions.push(`ວັນທີ: ${startDate} - ${endDate}`);
+        else if (startDate) conditions.push(`ຫຼັງວັນທີ: ${startDate}`);
+        else if (endDate) conditions.push(`ກ່ອນວັນທີ: ${endDate}`);
+
+        message += conditions.join(' | ');
+    } else {
+        message = 'ສະແດງຍອດລວມຂອງຂໍ້ມູນທັງໝົດ.';
+    }
+
+
+    document.getElementById('filteredTotalSales').textContent = formatCurrency(total);
+    filterMsgElement.textContent = message;
+}
+// ----------------------------------------------------
+
+
+// 1. ຟັງຊັນຫຼັກ: ໂຫຼດ ແລະ ສະແດງຂໍ້ມູນ
+async function loadTickets(queryRef) {
+    const finalQuery = queryRef || db.collection(TICKETS_COLLECTION_NAME).orderBy('entryTime', 'desc');
+
+    dataRecordsBody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-primary"><i class="bi bi-arrow-repeat me-2"></i> ກຳລັງໂຫຼດຂໍ້ມູນ...</td></tr>';
+
+    try {
+        const snapshot = await finalQuery.get();
+        let html = '';
+
+        if (snapshot.empty) {
+            dataRecordsBody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-muted">ບໍ່ມີຂໍ້ມູນບັດຈອດລົດ.</td></tr>';
+            updateFilteredSalesTotal('', '', '');
             return;
         }
 
-        let html = '';
-        querySnapshot.forEach((doc) => {
+        snapshot.forEach(doc => {
             const data = doc.data();
             const docId = doc.id;
 
-            let statusBadge;
-            if (data.isUsed) {
-                statusBadge = `<span class="badge bg-danger">ອອກແລ້ວ</span><br><small>${formatTimestamp(data.scanTime)}</small>`;
-            } else {
-                statusBadge = `<span class="badge bg-success">ຍັງບໍ່ອອກ</span>`;
-            }
+            const entryTimeDate = data.entryTime && data.entryTime.toDate ? data.entryTime.toDate() : null;
+            const entryDateTimeString = entryTimeDate ? formatTimestamp(data.entryTime) : 'N/A';
 
+            // ດຶງ customerName ມາໄວ້ໃນ data attribute ເພື່ອໃຫ້ສາມາດຄົ້ນຫາໄດ້ (ເພາະບໍ່ສະແດງໃນຕາຕະລາງ)
             html += `
-                <tr data-doc-id="${docId}">
+                <tr data-customer-name="${data.customerName.toLowerCase()}">
                     <td>${data.ticketId}</td>
                     <td>${data.vehicleType === 'Car' ? 'ລົດໃຫຍ່' : 'ລົດຈັກ'}</td>
                     <td>${data.licensePlate || 'N/A'}</td>
-                    <td>${data.depositDate}<br><small>@ ${formatTimestamp(data.entryTime).split(' ')[0]}</small></td>
+                    <td>${entryDateTimeString}</td>
                     <td>${data.issueByStaff}</td>
-                    <td>${data.parkingFee.toLocaleString('lo-LA')} ກີບ</td>
-                    <td>${statusBadge}</td>
+                    <td>${formatCurrency(data.parkingFee)}</td>
+                    <td>${data.isUsed
+                    ? '<span class="badge bg-secondary">ອອກໄປແລ້ວ</span>'
+                    : '<span class="badge bg-success">ຍັງຈອດຢູ່</span>'}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-warning me-2 edit-btn" data-doc-id="${docId}" data-ticket-data='${JSON.stringify({ ...data, docId: docId })}'><i class="bi bi-pencil"></i> ແກ້ໄຂ</button>
-                        <button class="btn btn-sm btn-danger delete-btn" data-doc-id="${docId}"><i class="bi bi-trash"></i> ລົບ</button>
+                        <button class="btn btn-sm btn-warning me-2" onclick="openAuthModal('edit', '${docId}', '${data.ticketId}', '${data.customerName}', '${data.licensePlate}', ${data.parkingFee}, '${data.issueByStaff}')">
+                            <i class="bi bi-pencil-square"></i> ແກ້ໄຂ
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="openAuthModal('delete', '${docId}', '${data.ticketId}')" ${data.isUsed ? '' : 'disabled'}>
+                            <i class="bi bi-trash"></i> ລຶບ
+                        </button>
                     </td>
                 </tr>
             `;
         });
 
         dataRecordsBody.innerHTML = html;
-        attachTableEventListeners();
 
-    } catch (e) {
-        console.error("Error loading data: ", e);
-        dataRecordsBody.innerHTML = '<tr><td colspan="8" class="text-center p-4 text-danger">ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ.</td></tr>';
+        const generalSearch = document.getElementById('generalSearch').value.trim();
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        filterTableByText(generalSearch, startDate, endDate);
+
+    } catch (error) {
+        console.error("Error loading data:", error);
+        dataRecordsBody.innerHTML = `<tr><td colspan="8" class="text-center p-4 text-danger">Error loading data: ${error.message}. ກະລຸນາກວດສອບ Firebase Security Rules.</td></tr>`;
+        updateFilteredSalesTotal('', '', '');
     }
 }
 
-// 3. ຟັງຊັນການຄົ້ນຫາແລະກອງຂໍ້ມູນ
+// 2. ຟັງຊັນຄົ້ນຫາ ແລະ ກອງຂໍ້ມູນ
 document.getElementById('searchBtn').addEventListener('click', () => {
-    const generalSearch = document.getElementById('generalSearch').value.trim().toLowerCase();
-    const staffSearch = document.getElementById('staffSearch').value.trim().toLowerCase();
+    const generalSearch = document.getElementById('generalSearch').value.trim();
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
 
-    let baseQuery = db.collection(TICKETS_COLLECTION_NAME);
-    let finalQuery = baseQuery;
+    let queryRef = db.collection(TICKETS_COLLECTION_NAME).orderBy('entryTime', 'desc');
 
-    if (startDate && endDate) {
-        const startTs = new Date(startDate);
-        const endTs = new Date(endDate);
-        endTs.setDate(endTs.getDate() + 1);
-
-        // 🟢 ໃຊ້ .where() ແລະ .orderBy() ຕໍ່ໆກັນ
-        finalQuery = baseQuery
-            .where('entryTime', '>=', startTs)
-            .where('entryTime', '<', endTs)
-            .orderBy('entryTime', 'desc');
-    } else {
-        finalQuery = baseQuery.orderBy('entryTime', 'desc');
+    if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        queryRef = queryRef.where('entryTime', '>=', start);
+    }
+    if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        queryRef = queryRef.where('entryTime', '<=', end);
     }
 
-    loadTickets(finalQuery).then(() => {
-        filterTableByText(generalSearch, staffSearch);
+    loadTickets(queryRef).then(() => {
+        filterTableByText(generalSearch, startDate, endDate);
     });
 });
 
-document.getElementById('resetFilterBtn').addEventListener('click', () => {
-    document.getElementById('generalSearch').value = '';
-    document.getElementById('staffSearch').value = '';
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value = '';
-    loadTickets();
-});
-
-function filterTableByText(generalSearch, staffSearch) {
+// ຟັງຊັນກອງຂໍ້ມູນດ້ວຍຂໍ້ຄວາມ (Client-side filtering)
+function filterTableByText(generalSearchTerm, startDate, endDate) {
     const rows = dataRecordsBody.querySelectorAll('tr');
+    const searchLower = generalSearchTerm.toLowerCase();
+
     rows.forEach(row => {
-        const ticketId = row.cells[0].textContent.toLowerCase();
-        const licensePlate = row.cells[2].textContent.toLowerCase();
-        const staff = row.cells[4].textContent.toLowerCase();
+        // ຄໍລໍາທີ່ຕ້ອງການຄົ້ນຫາ
+        const ticketId = row.cells[0]?.textContent.toLowerCase() || '';
+        const licensePlate = row.cells[2]?.textContent.toLowerCase() || '';
+        const entryDateTime = row.cells[3]?.textContent.toLowerCase() || '';
+        const staff = row.cells[4]?.textContent.toLowerCase() || '';
+        // ດຶງຊື່ລູກຄ້າຈາກ data attribute
+        const customerName = row.getAttribute('data-customer-name') || '';
 
-        const generalMatch = !generalSearch || ticketId.includes(generalSearch) || licensePlate.includes(generalSearch) || staff.includes(generalSearch);
-        const staffMatch = !staffSearch || staff.includes(staffSearch);
+        let matchesGeneral = true;
 
-        if (generalMatch && staffMatch) {
+        if (searchLower !== '') {
+            if (!ticketId.includes(searchLower) &&
+                !licensePlate.includes(searchLower) &&
+                !staff.includes(searchLower) &&
+                !entryDateTime.includes(searchLower) &&
+                !customerName.includes(searchLower)) {
+                matchesGeneral = false;
+            }
+        }
+
+        if (matchesGeneral) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
         }
     });
+
+    updateFilteredSalesTotal(generalSearchTerm, startDate, endDate);
 }
 
-// 4. ຟັງຊັນແກ້ໄຂ ແລະ ລົບ
-function attachTableEventListeners() {
-    // ຈັດການປຸ່ມລົບ
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.onclick = async (e) => {
-            const docId = e.currentTarget.getAttribute('data-doc-id');
-            const ticketId = e.currentTarget.closest('tr').cells[0].textContent;
-
-            if (confirm(`ທ່ານແນ່ໃຈບໍທີ່ຈະລົບຂໍ້ມູນບັດ ID: ${ticketId} ນີ້ອອກຈາກລະບົບຢ່າງຖາວອນ?`)) {
-                try {
-                    // 🟢 ໃຊ້ db.collection().doc().delete()
-                    await db.collection(TICKETS_COLLECTION_NAME).doc(docId).delete();
-                    alert(`ລົບຂໍ້ມູນບັດ ID: ${ticketId} ສຳເລັດແລ້ວ.`);
-                    loadTickets();
-                } catch (e) {
-                    alert("ຜິດພາດໃນການລົບຂໍ້ມູນ: " + e.message);
-                }
-            }
-        };
-    });
-
-    // ຈັດການປຸ່ມແກ້ໄຂ
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            const dataString = e.currentTarget.getAttribute('data-ticket-data');
-            const data = JSON.parse(dataString);
-
-            document.getElementById('editDocId').value = data.docId;
-            document.getElementById('editTicketId').value = data.ticketId;
-            document.getElementById('editCustomerName').value = data.customerName;
-            document.getElementById('editLicensePlate').value = data.licensePlate || '';
-            document.getElementById('editParkingFee').value = data.parkingFee;
-            document.getElementById('editIssueByStaff').value = data.issueByStaff;
-
-            const editModal = new bootstrap.Modal(document.getElementById('editModal'));
-            editModal.show();
-        };
-    });
-}
-
-// 5. ບັນທຶກການແກ້ໄຂ
-document.getElementById('saveEditBtn').addEventListener('click', async () => {
-    const docId = document.getElementById('editDocId').value;
-    const saveEditBtn = document.getElementById('saveEditBtn');
-
-    saveEditBtn.disabled = true;
-    saveEditBtn.textContent = 'ກຳລັງບັນທຶກ...';
-
-    const updatedData = {
-        customerName: document.getElementById('editCustomerName').value.trim(),
-        licensePlate: document.getElementById('editLicensePlate').value.trim(),
-        parkingFee: parseFloat(document.getElementById('editParkingFee').value) || 0,
-        issueByStaff: document.getElementById('editIssueByStaff').value.trim(),
-    };
-
-    try {
-        // 🟢 ໃຊ້ db.collection().doc().update()
-        await db.collection(TICKETS_COLLECTION_NAME).doc(docId).update(updatedData);
-        alert('ແກ້ໄຂຂໍ້ມູນສຳເລັດ!');
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-        modal.hide();
-        loadTickets();
-
-    } catch (e) {
-        alert("ຜິດພາດໃນການແກ້ໄຂ: " + e.message);
-    } finally {
-        saveEditBtn.disabled = false;
-        saveEditBtn.textContent = 'ບັນທຶກການແກ້ໄຂ';
-    }
+// 3. ຟັງຊັນລ້າງການກອງ
+document.getElementById('resetFilterBtn').addEventListener('click', () => {
+    document.getElementById('generalSearch').value = '';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    loadTickets();
+    calculateSales();
 });
 
 
-// 6. Logic ສະແກນ QR Code
-const scanModal = document.getElementById('scanModal');
-let scannedTicketId = null;
+// ----------------------------------------------------
+// 🌟 ຟັງຊັນ: ການຢືນຢັນລະຫັດຫົວໜ້າ (ຍັງຄືເກົ່າ) 🌟
+// ----------------------------------------------------
 
-// ຟັງຊັນການເລີ່ມຕົ້ນແລະຢຸດສະແກນ
+// ຟັງຊັນ: ເປີດ Modal ຢືນຢັນລະຫັດ
+window.openAuthModal = function (action, docId, ticketId, customerName = '', licensePlate = '', parkingFee = 0, issueByStaff = '') {
+    document.getElementById('authAction').value = action;
+    document.getElementById('authDocId').value = docId;
+    document.getElementById('authTicketId').value = ticketId;
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('authErrorMsg').style.display = 'none';
+
+    if (action === 'edit') {
+        window.editTempData = { docId, ticketId, customerName, licensePlate, parkingFee, issueByStaff };
+    }
+
+    const authModal = new bootstrap.Modal(document.getElementById('adminAuthModal'));
+    authModal.show();
+}
+
+// ຟັງຊັນ: ຢືນຢັນລະຫັດ ແລະ ດໍາເນີນການ
+document.getElementById('confirmAdminAuthBtn').addEventListener('click', () => {
+    const enteredPassword = document.getElementById('adminPassword').value.trim();
+    const action = document.getElementById('authAction').value;
+    const docId = document.getElementById('authDocId').value;
+    const ticketId = document.getElementById('authTicketId').value;
+    const authModal = bootstrap.Modal.getInstance(document.getElementById('adminAuthModal'));
+    const errorMsg = document.getElementById('authErrorMsg');
+
+    if (enteredPassword === ADMIN_PASSWORD) {
+        authModal.hide();
+
+        if (action === 'edit') {
+            const { docId, ticketId, customerName, licensePlate, parkingFee, issueByStaff } = window.editTempData;
+            openEditModal(docId, ticketId, customerName, licensePlate, parkingFee, issueByStaff);
+        } else if (action === 'delete') {
+            deleteTicket(docId, ticketId);
+        }
+    } else {
+        errorMsg.style.display = 'block';
+    }
+});
+
+// 5. ຟັງຊັນເປີດ Modal ແກ້ໄຂ
+window.openEditModal = function (docId, ticketId, customerName, licensePlate, parkingFee, issueByStaff) {
+    document.getElementById('editDocId').value = docId;
+    document.getElementById('editTicketId').value = ticketId;
+    document.getElementById('editCustomerName').value = customerName;
+    document.getElementById('editLicensePlate').value = licensePlate === 'N/A' ? '' : licensePlate;
+    document.getElementById('editParkingFee').value = parkingFee;
+    document.getElementById('editIssueByStaff').value = issueByStaff;
+
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    editModal.show();
+}
+
+// 6. ຟັງຊັນບັນທຶກການແກ້ໄຂ
+document.getElementById('saveEditBtn').addEventListener('click', async () => {
+    const docId = document.getElementById('editDocId').value;
+    const updatedData = {
+        customerName: document.getElementById('editCustomerName').value.trim(),
+        licensePlate: document.getElementById('editLicensePlate').value.trim() || 'N/A',
+        parkingFee: parseFloat(document.getElementById('editParkingFee').value) || 0,
+        issueByStaff: document.getElementById('editIssueByStaff').value.trim()
+    };
+
+    try {
+        await db.collection(TICKETS_COLLECTION_NAME).doc(docId).update(updatedData);
+        alert('ແກ້ໄຂຂໍ້ມູນສຳເລັດແລ້ວ!');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+        modal.hide();
+        loadTickets();
+        calculateSales();
+    } catch (e) {
+        alert('ຜິດພາດໃນການແກ້ໄຂ: ' + e.message);
+    }
+});
+
+// 7. ຟັງຊັນລຶບບັດ 
+window.deleteTicket = function (docId, ticketId) {
+    if (confirm(`ທ່ານແນ່ໃຈບໍວ່າຕ້ອງການລຶບບັດ ID: ${ticketId} ນີ້ອອກຈາກລະບົບ?`)) {
+        db.collection(TICKETS_COLLECTION_NAME).doc(docId).delete()
+            .then(() => {
+                alert(`ລຶບບັດ ID: ${ticketId} ສຳເລັດແລ້ວ.`);
+                loadTickets();
+                calculateSales();
+            })
+            .catch(error => {
+                alert("ຜິດພາດໃນການລຶບ: " + error.message);
+            });
+    }
+}
+
+
+// 8. Logic ສະແກນ QR Code (ຍັງຄືເກົ່າ)
 function startScanner() {
     html5QrCode = new Html5Qrcode("reader");
     const qrCodeSuccessCallback = async (decodedText, decodedResult) => {
@@ -228,7 +366,6 @@ function startScanner() {
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, (errorMessage) => {
-        // ຜິດພາດຂະນະສະແກນ (Error during scan)
     }).catch(err => {
         document.getElementById('reader').innerHTML = `<p class="text-center text-danger mt-4">ບໍ່ສາມາດເຂົ້າເຖິງກ້ອງໄດ້. ກະລຸນາອະນຸຍາດ.</p>`;
     });
@@ -253,7 +390,6 @@ async function checkTicketStatus(ticketId) {
     confirmBtn.style.display = 'none';
 
     try {
-        // 🟢 ໃຊ້ .where() ແລະ .get()
         const querySnapshot = await db.collection(TICKETS_COLLECTION_NAME).where("ticketId", "==", ticketId).limit(1).get();
 
         if (querySnapshot.empty) {
@@ -265,20 +401,32 @@ async function checkTicketStatus(ticketId) {
         const docSnapshot = querySnapshot.docs[0];
         const data = docSnapshot.data();
 
+        const customerDetails = `
+            <ul class="list-group list-group-flush text-start mt-2">
+                <li class="list-group-item"><strong>ປະເພດລົດ:</strong> ${data.vehicleType === 'Car' ? 'ລົດໃຫຍ່' : 'ລົດຈັກ'}</li>
+                <li class="list-group-item"><strong>ທະບຽນລົດ:</strong> ${data.licensePlate || 'N/A'}</li>
+                <li class="list-group-item"><strong>ຊື່ລູກຄ້າ:</strong> ${data.customerName}</li>
+                <li class="list-group-item"><strong>ວັນທີຝາກ:</strong> ${data.depositDate}</li>
+                <li class="list-group-item"><strong>ເວລາເຂົ້າ:</strong> ${formatTimestamp(data.entryTime)}</li>
+                <li class="list-group-item"><strong>ຄ່າຈອດ:</strong> ${formatCurrency(data.parkingFee)}</li>
+                <li class="list-group-item"><strong>ຜູ້ອອກບັດ:</strong> ${data.issueByStaff}</li>
+            </ul>
+        `;
+
         if (data.isUsed) {
             resultDiv.className = 'alert mt-3 alert-warning';
             resultDiv.innerHTML = `
                 <h4><i class="bi bi-exclamation-triangle me-2"></i> ບັດນີ້ຖືກນຳໃຊ້ແລ້ວ</h4>
                 <p><strong>ID ບັດ:</strong> ${ticketId}</p>
                 <p><strong>ເວລາອອກ:</strong> ${formatTimestamp(data.scanTime)}</p>
+                ${customerDetails}
             `;
         } else {
             resultDiv.className = 'alert mt-3 alert-success';
             resultDiv.innerHTML = `
-                <h4><i class="bi bi-check-circle me-2"></i> ກວດສອບສຳເລັດ!</h4>
+                <h4><i class="bi bi-check-circle me-2"></i> ກວດສອບສຳເລັດ! </h4>
                 <p><strong>ID ບັດ:</strong> ${ticketId}</p>
-                <p><strong>ລົດ:</strong> ${data.vehicleType === 'Car' ? 'ລົດໃຫຍ່' : 'ລົດຈັກ'}</p>
-                <p><strong>ເວລາເຂົ້າ:</strong> ${formatTimestamp(data.entryTime)}</p>
+                ${customerDetails}
             `;
             confirmBtn.style.display = 'block';
             confirmBtn.setAttribute('data-doc-id', docSnapshot.id);
@@ -297,7 +445,6 @@ document.getElementById('confirmScanBtn').addEventListener('click', async (e) =>
     confirmBtn.textContent = 'ກຳລັງຢືນຢັນ...';
 
     try {
-        // 🟢 ໃຊ້ .update() ແລະ FieldValue
         await db.collection(TICKETS_COLLECTION_NAME).doc(docId).update({
             isUsed: true,
             scanTime: firebase.firestore.FieldValue.serverTimestamp()
@@ -308,6 +455,7 @@ document.getElementById('confirmScanBtn').addEventListener('click', async (e) =>
         resultDiv.innerHTML = `<h4><i class="bi bi-check-circle-fill me-2"></i> ຢືນຢັນການອອກລົດສຳເລັດ!</h4>`;
 
         loadTickets();
+        calculateSales();
 
         setTimeout(() => {
             const modal = bootstrap.Modal.getInstance(scanModal);
@@ -323,7 +471,8 @@ document.getElementById('confirmScanBtn').addEventListener('click', async (e) =>
 });
 
 
-// 7. ເລີ່ມຕົ້ນໂຫຼດຂໍ້ມູນ
+// 9. ເລີ່ມຕົ້ນໂຫຼດຂໍ້ມູນ
 document.addEventListener('DOMContentLoaded', () => {
     loadTickets();
+    calculateSales();
 });
