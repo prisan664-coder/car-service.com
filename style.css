@@ -1,51 +1,99 @@
-/* style.css - ໃຊ້ຮ່ວມກັນສຳລັບທັງສອງໜ້າ */
-
-body {
-    background-color: #f8f9fa;
-    /* ສີພື້ນຫຼັງອ່ອນ */
+/* ======================================= */
+/* Styles for screen and print */
+/* ======================================= */
+.screen-only {
+    /* ໃຊ້ເພື່ອຊ່ອນບາງສ່ວນຂອງໜ້າຈໍໃນເວລາພິມ */
 }
 
-/* ສ່ວນຫົວຂອງໜ້າອອກບັດ */
-.header-index {
-    background-color: #007bff;
-    /* Primary Blue */
-    color: white;
-    padding: 15px 0;
-    margin-bottom: 20px;
-}
+/* ======================================= */
+/* ປັບຮູບແບບສຳລັບການພິມ (Print Styles) */
+/* ======================================= */
 
-/* ສ່ວນຫົວຂອງໜ້າຈັດການຂໍ້ມູນ */
-.header-table {
-    background-color: #343a40;
-    /* Dark Grey */
-    color: white;
-    padding: 15px 0;
-    margin-bottom: 20px;
-}
+@media print {
 
-/* Style ສໍາລັບກ່ອງຄຳເຕືອນ (Disclaimer) */
-.card-disclaimer {
-    border-left: 5px solid #ffc107;
-    /* ເສັ້ນສີເຫຼືອງຂ້າງ */
-}
+    /* ເຊື່ອງສ່ວນທີ່ບໍ່ກ່ຽວຂ້ອງກັບໃບຮັບເງິນ */
+    body>*:not(#printReceipt) {
+        display: none !important;
+    }
 
-.disclaimer-title {
-    color: #ffc107;
-    /* ສີເຫຼືອງສຳລັບຫົວຂໍ້ */
-}
+    .screen-only {
+        display: none !important;
+    }
 
-/* ປັບແຕ່ງຕາຕະລາງ */
-.table th,
-.table td {
-    vertical-align: middle;
-}
+    /* ເຊື່ອງ header/footer ທີ່ Browser ຕື່ມໃຫ້ */
+    @page {
+        margin: 0;
+    }
 
-/* ປັບແຕ່ງ QR Code Scanner */
-#reader {
-    width: 100%;
-    max-width: 400px;
-    margin: 15px auto;
-    border: 2px dashed #007bff;
-    padding: 10px;
-    border-radius: 8px;
+    /* ເລີ່ມຕົ້ນການປັບຂະໜາດໃບຮັບເງິນ */
+    body {
+        margin: 0;
+        padding: 0;
+        /* ຕັ້ງຄ່າຂະໜາດກະດາດໃຫ້ຄືໃບຮັບເງິນ (80mm) */
+        width: 80mm;
+        max-width: 80mm;
+    }
+
+    #printReceipt {
+        /* ສ້າງພື້ນທີ່ພິມໃຫ້ຂະໜາດນ້ອຍ */
+        display: block !important;
+        width: 100%;
+        margin: 0;
+        padding: 5px !important;
+        font-family: monospace;
+        /* ໃຊ້ font ແບບເຄື່ອງພິມ */
+        font-size: 10pt;
+        border: none !important;
+        /* ລຶບຂອບອອກ */
+        box-shadow: none !important;
+        /* ລຶບເງົາອອກ */
+    }
+
+    .receipt-details,
+    .receipt-warning {
+        width: 100% !important;
+        /* ໃຫ້ກວ້າງເຕັມໃບ */
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* ປັບຂະໜາດ QR Code ໃຫ້ເໝາະສົມ */
+    #qrcodeDisplay {
+        border: 1px solid #000 !important;
+        padding: 5px !important;
+    }
+
+    #qrcodeDisplay img {
+        width: 100px !important;
+        /* ຂະໜາດນ້ອຍລົງ */
+        height: 100px !important;
+    }
+
+    /* ເຊື່ອງປຸ່ມພິມໃນໃບພິມ */
+    .btn {
+        display: none !important;
+    }
+
+    /* ຈັດການຂະໜາດ Font ໃຫ້ອ່ານງ່າຍໃນໃບນ້ອຍ */
+    #printReceipt h5 {
+        font-size: 14pt !important;
+    }
+
+    #printReceipt p {
+        font-size: 10pt !important;
+        line-height: 1.3;
+        margin-bottom: 2px !important;
+    }
+
+    #printReceipt hr {
+        border-color: #000 !important;
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
+    }
+
+    #printReceipt .small {
+        font-size: 9pt !important;
+    }
 }
