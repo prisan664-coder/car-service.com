@@ -15,8 +15,8 @@
 
 <body>
 
-    <header class="header-table shadow-sm">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
+    <header class="header-table bg-primary text-white shadow-sm">
+        <div class="container-fluid d-flex justify-content-between align-items-center py-2">
             <h3 class="mb-0"><i class="bi bi-clipboard-data me-2"></i> ຈັດການຂໍ້ມູນບັດຈອດລົດ</h3>
             <div>
                 <a href="index.html" class="btn btn-info me-2"><i class="bi bi-arrow-left me-2"></i> ກັບໄປໜ້າອອກບັດ</a>
@@ -28,24 +28,43 @@
 
     <div class="container-fluid mt-4">
 
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card bg-success text-white shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-cash-stack me-2"></i> ຍອດຂາຍລວມທັງໝົດ</h5>
+                        <h2 class="display-5 fw-bold" id="totalSalesDisplay">0 ກີບ</h2>
+                        <p class="mb-0 small">ນັບຈາກບັດທີ່ຖືກນຳໃຊ້ແລ້ວທັງໝົດ</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-info text-white shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-cash-coin me-2"></i> ຍອດຂາຍຂອງມື້ນີ້</h5>
+                        <h2 class="display-5 fw-bold" id="todaySalesDisplay">0 ກີບ</h2>
+                        <p class="mb-0 small">ນັບຈາກບັດທີ່ຖືກນຳໃຊ້ແລ້ວໃນວັນທີປັດຈຸບັນ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card mb-4 shadow-sm">
             <div class="card-body">
-                <h5 class="card-title text-primary"><i class="bi bi-funnel-fill me-2"></i> ເຄື່ອງມືຄົ້ນຫາ ແລະ ກອງຂໍ້ມູນ
-                </h5>
+                <h5 class="card-title text-primary"><i class="bi bi-search me-2"></i> ເຄື່ອງມືຄົ້ນຫາແບບງ່າຍ</h5>
                 <div class="row g-3">
-                    <div class="col-md-4">
+
+                    <div class="col-md-6">
                         <input type="text" class="form-control" id="generalSearch"
-                            placeholder="ຄົ້ນຫາ ID ບັດ, ທະບຽນ, ຊື່ລູກຄ້າ...">
+                            placeholder="ຄົ້ນຫາທັງໝົດ (ID ບັດ, ທະບຽນ, ຊື່ລູກຄ້າ, ຊື່ພະນັກງານ, ວັນທີ/ເດືອນ/ປີ)">
                     </div>
-                    <div class="col-md-2">
-                        <input type="text" class="form-control" id="staffSearch" placeholder="ຊື່ຜູ້ອອກບັດ">
-                    </div>
+
                     <div class="col-md-3">
                         <input type="date" class="form-control" id="startDate" placeholder="ວັນທີເລີ່ມຕົ້ນ">
                     </div>
                     <div class="col-md-3">
                         <input type="date" class="form-control" id="endDate" placeholder="ວັນທີສິ້ນສຸດ">
                     </div>
+
                     <div class="col-12 text-end">
                         <button class="btn btn-primary me-2" id="searchBtn"><i class="bi bi-search me-2"></i>
                             ຄົ້ນຫາ</button>
@@ -55,6 +74,15 @@
             </div>
         </div>
 
+        <div class="card bg-warning mb-4 shadow-sm">
+            <div class="card-body py-2">
+                <p class="mb-0 fw-bold text-dark fs-4">
+                    <i class="bi bi-calculator-fill me-2"></i> ຍອດລວມຕາມຜົນຄົ້ນຫາ:
+                    <span id="filteredTotalSales" class="ms-2">0 ກີບ</span>
+                </p>
+                <p class="mb-0 small text-dark" id="filterCriteriaMsg">ສະແດງຍອດລວມຂອງຂໍ້ມູນທັງໝົດ.</p>
+            </div>
+        </div>
         <div class="table-responsive">
             <table class="table table-striped table-hover shadow-sm">
                 <thead class="bg-dark text-white">
@@ -144,8 +172,37 @@
     </div>
 
 
+    <div class="modal fade" id="adminAuthModal" tabindex="-1" aria-labelledby="adminAuthModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="adminAuthModalLabel"><i class="bi bi-lock-fill me-2"></i>
+                        ຢືນຢັນລະຫັດຫົວໜ້າ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger small">ຕ້ອງມີລະຫັດຫົວໜ້າເພື່ອແກ້ໄຂ ຫຼື ລຶບຂໍ້ມູນ</p>
+                    <input type="password" class="form-control" id="adminPassword" placeholder="ປ້ອນລະຫັດຫົວໜ້າ">
+                    <div class="mt-2 text-danger small" id="authErrorMsg" style="display: none;">ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ.
+                    </div>
+
+                    <input type="hidden" id="authAction" value="">
+                    <input type="hidden" id="authDocId" value="">
+                    <input type="hidden" id="authTicketId" value="">
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ຍົກເລີກ</button>
+                    <button type="button" class="btn btn-danger" id="confirmAdminAuthBtn">ຢືນຢັນ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="html5-qrcode.min.js"></script>
 
     <script src="table-app.js"></script>
 </body>
